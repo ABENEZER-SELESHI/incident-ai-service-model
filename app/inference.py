@@ -5,17 +5,18 @@ from PIL import Image
 from torchvision import transforms
 import torch.nn.functional as F
 from pathlib import Path
+from app.config import LABEL_MAP_PATH, MODEL_PATH, DEVICE as _CFG_DEVICE
 
-DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+DEVICE = _CFG_DEVICE if _CFG_DEVICE else ("cuda" if torch.cuda.is_available() else "cpu")
 
-# Resolve paths relative to project root (one level up from app/)
-BASE_DIR = Path(__file__).resolve().parent.parent
+# Resolve paths relative to the working directory (project root)
+BASE_DIR = Path.cwd()
 
 # -------------------------
 # LOAD LABEL MAP
 # -------------------------
 
-with open(BASE_DIR / "models" / "label_map.json") as f:
+with open(BASE_DIR / LABEL_MAP_PATH) as f:
     ID2LABEL = json.load(f)
 
 # -------------------------
@@ -30,7 +31,7 @@ model = timm.create_model(
 
 model.load_state_dict(
     torch.load(
-        BASE_DIR / "models" / "incident_classifier.pth",
+        BASE_DIR / MODEL_PATH,
         map_location=DEVICE
     )
 )
