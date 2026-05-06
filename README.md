@@ -21,7 +21,7 @@ incident-ai-service/
 ```
 
 ## Setup
-
+https://github.com/ABENEZER-SELESHI/incident-ai-service-model.git
 ```bash
 # 1. Create & activate virtual environment
 python -m venv venv

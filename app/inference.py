@@ -1,22 +1,69 @@
+# INCIDENT-AI-SERVICE/app/inference.py
 import json
 import torch
 import timm
+import os
+import time
+import urllib.request
 from PIL import Image
 from torchvision import transforms
 import torch.nn.functional as F
-from pathlib import Path
-from app.config import LABEL_MAP_PATH, MODEL_PATH, DEVICE as _CFG_DEVICE
+
+from app.config import MODEL_PATH, LABEL_MAP_PATH, DEVICE as _CFG_DEVICE
+
+# -------------------------
+# CONFIG
+# -------------------------
+
+MODEL_URL = "https://drive.google.com/uc?export=download&id=1CgQQmWDp3uYxrlE8AfnuYIqCQSbQdLsm"
 
 DEVICE = _CFG_DEVICE if _CFG_DEVICE else ("cuda" if torch.cuda.is_available() else "cpu")
 
-# Resolve paths relative to the working directory (project root)
-BASE_DIR = Path.cwd()
+# Ensure models directory exists
+os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
+
+# -------------------------
+# DOWNLOAD WITH RETRY
+# -------------------------
+
+def download_with_retry(url, path, retries=3):
+    for i in range(retries):
+        try:
+            print(f"⬇️ Attempt {i+1} downloading model...")
+            urllib.request.urlretrieve(url, path)
+            return
+        except Exception as e:
+            print(f"❌ Retry {i+1} failed:", e)
+            time.sleep(2)
+    raise RuntimeError("❌ Download failed after retries")
+
+# -------------------------
+# DOWNLOAD MODEL IF MISSING
+# -------------------------
+
+if not os.path.exists(MODEL_PATH):
+    print("⬇️ Model not found. Downloading...")
+    download_with_retry(MODEL_URL, MODEL_PATH)
+    print("✅ Model downloaded successfully")
+
+# -------------------------
+# VALIDATE FILES
+# -------------------------
+
+if not os.path.exists(MODEL_PATH):
+    raise FileNotFoundError(f"Model not found at: {MODEL_PATH}")
+
+if not os.path.exists(LABEL_MAP_PATH):
+    raise FileNotFoundError(f"Label map not found at: {LABEL_MAP_PATH}")
+
+print(f"✅ Model path: {MODEL_PATH}")
+print(f"✅ Label map path: {LABEL_MAP_PATH}")
 
 # -------------------------
 # LOAD LABEL MAP
 # -------------------------
 
-with open(BASE_DIR / LABEL_MAP_PATH) as f:
+with open(LABEL_MAP_PATH) as f:
     ID2LABEL = json.load(f)
 
 # -------------------------
@@ -30,14 +77,13 @@ model = timm.create_model(
 )
 
 model.load_state_dict(
-    torch.load(
-        BASE_DIR / MODEL_PATH,
-        map_location=DEVICE
-    )
+    torch.load(MODEL_PATH, map_location=DEVICE)
 )
 
 model.to(DEVICE)
 model.eval()
+
+print("✅ Model loaded successfully")
 
 # -------------------------
 # TRANSFORMS
@@ -49,13 +95,12 @@ transform = transforms.Compose([
 ])
 
 # -------------------------
-# PREDICT
+# PREDICT FUNCTION
 # -------------------------
 
 def predict(image_path):
     image = Image.open(image_path).convert("RGB")
-    image = transform(image)
-    image = image.unsqueeze(0).to(DEVICE)
+    image = transform(image).unsqueeze(0).to(DEVICE)
 
     with torch.no_grad():
         outputs = model(image)
