@@ -23,7 +23,7 @@ DEVICE = _CFG_DEVICE if _CFG_DEVICE else (
 # MODEL DOWNLOAD URL
 # -------------------------
 MODEL_URL = (
-    "https://huggingface.co/ABENEZERSELESHI/incident_report_model_2.0/resolve/main/incident_classifier%20(1).pth"
+    "https://huggingface.co/ABENEZERSELESHI/incident_report_model_2.0/resolve/main/incident_classifier.pth"
 )
 
 # -------------------------
